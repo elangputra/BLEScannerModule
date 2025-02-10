@@ -1,5 +1,5 @@
 //
-//  NativeBLEManager.swift
+//  NativeBLEManagerImpl.swift
 //  BLEScannerModule
 //
 //  Created by elang.sartika on 09/02/25.
@@ -9,30 +9,31 @@ import Foundation
 import React
 import CoreBluetooth
 
+@objc protocol NativeBLEManagerEventDelegate {
+  func sendDevice(name: String, device: [String: Any])
+  func sendBluetoothState(name: String, state: Int)
+}
+
 @objc(NativeBLEManagerImpl)
-public final class NativeBLEManager: RCTEventEmitter, CBCentralManagerDelegate, CBPeripheralDelegate {
+public final class NativeBLEManagerImpl: NSObject, CBCentralManagerDelegate, CBPeripheralDelegate {
   @objc public static let NEARBY_DEVICE_KEY = "NearbyDevice"
   @objc public static let BLUETOOTH_STATE_KEY = "BluetoothState"
+  @objc weak var delegate: NativeBLEManagerEventDelegate? = nil
 
   private var centralManager: CBCentralManager? = nil
-  private var nearbyDevices: [String: CBPeripheral] = [:]
+  private var nearbyDevices: [String: [String: Any]] = [:]
   private var isConnected = false
 
-  // We dont use UIKit so we should set requiresMainQueueSetup to false
   @objc
-  public override static func requiresMainQueueSetup() -> Bool {
-      return false
-  }
-
-  public override func supportedEvents() -> [String]! {
-    return [NativeBLEManager.NEARBY_DEVICE_KEY, NativeBLEManager.BLUETOOTH_STATE_KEY]
+  public func supportedEvents() -> [String]! {
+    return [NativeBLEManagerImpl.NEARBY_DEVICE_KEY, NativeBLEManagerImpl.BLUETOOTH_STATE_KEY]
   }
   
   @objc
   public func getEventKey() -> NSDictionary {
     return [
-      "nearbyDevices": NativeBLEManager.NEARBY_DEVICE_KEY,
-      "bluetoothState": NativeBLEManager.BLUETOOTH_STATE_KEY
+      "nearbyDevices": NativeBLEManagerImpl.NEARBY_DEVICE_KEY,
+      "bluetoothState": NativeBLEManagerImpl.BLUETOOTH_STATE_KEY
     ]
   }
 
@@ -42,7 +43,7 @@ public final class NativeBLEManager: RCTEventEmitter, CBCentralManagerDelegate, 
       centralManager?.stopScan()
     }
     centralManager =  CBCentralManager(delegate: self, queue: nil)
-    print("Bluetooth start scan")
+    debugPrint("Bluetooth start scan")
   }
 
   @objc
@@ -51,27 +52,13 @@ public final class NativeBLEManager: RCTEventEmitter, CBCentralManagerDelegate, 
     centralManager = nil
     nearbyDevices = [:]
   }
-  
-  @objc
-  public func addListener(eventType: String) {
-    // Required by RN Turbo Module https://github.com/react-native-community/RNNewArchitectureLibraries/tree/feat/swift-event-emitter?tab=readme-ov-file#codegen-update-codegen-specs
-  }
-  
-  @objc
-  public func removeListeners(count: Int) {
-    // Required by RN Turbo Module https://github.com/react-native-community/RNNewArchitectureLibraries/tree/feat/swift-event-emitter?tab=readme-ov-file#codegen-update-codegen-specs
+
+  private func sendDevice(device: [String: Any]) {
+    self.delegate?.sendDevice(name: NativeBLEManagerImpl.NEARBY_DEVICE_KEY, device: device)
   }
 
-  @objc
-  private func sendDevice(device: CBPeripheral) {
-    self.sendEvent(withName: NativeBLEManager.NEARBY_DEVICE_KEY, body: [
-      "name": device.name!,
-    ])
-  }
-
-  @objc
   private func sendBluetoothState(state: Int) {
-    self.sendEvent(withName: NativeBLEManager.BLUETOOTH_STATE_KEY, body: state)
+    self.delegate?.sendBluetoothState(name: NativeBLEManagerImpl.BLUETOOTH_STATE_KEY, state: state)
   }
 
   // MARK: Central Manager Methods
@@ -100,8 +87,22 @@ public final class NativeBLEManager: RCTEventEmitter, CBCentralManagerDelegate, 
 
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
     if(peripheral.name != nil) {
-      nearbyDevices[peripheral.name!] = peripheral
-      self.sendDevice(device: peripheral)
+      var manufacturerData: [String] = []
+      if let mData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
+        manufacturerData = (String(data: mData, encoding: .utf8) ?? "").components(separatedBy: ":")
+      }
+      let data: [String: Any] = [
+        "name": peripheral.name ?? "N/A",
+        "address": "00:00:00:00:00:00", // iOS not supporting mac address
+        "uuid": peripheral.identifier.uuidString,
+        "rssi": RSSI,
+        // "advertiseFlags": nil, // No data related Flags
+        "txPowerLevel": advertisementData[CBAdvertisementDataTxPowerLevelKey] ?? 0,
+        "manufacturerSpecificData": manufacturerData,
+        "serviceUuids": peripheral.services?.map { service in service.uuid.uuidString } ?? []
+      ]
+      nearbyDevices[peripheral.identifier.uuidString] = data
+      self.sendDevice(device: data)
     }
   }
 }

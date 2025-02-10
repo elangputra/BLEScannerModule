@@ -1,4 +1,4 @@
-package com.blescannermodule
+package com.nativeblemanager
 
 import com.facebook.react.BaseReactPackage
 import com.facebook.react.bridge.NativeModule
