@@ -68,7 +68,7 @@ public final class NativeBLEManagerImpl: NSObject, CBCentralManagerDelegate, CBP
     switch (central.state) {
     case .poweredOn:
       debugPrint("Bluetooth is available")
-      centralManager?.scanForPeripherals(withServices: [])
+      centralManager?.scanForPeripherals(withServices: [], options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
       break
     case .resetting, .poweredOff:
       debugPrint("Bluetooth is not available")
@@ -88,8 +88,8 @@ public final class NativeBLEManagerImpl: NSObject, CBCentralManagerDelegate, CBP
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
     if(peripheral.name != nil) {
       var manufacturerData: [String] = []
-      if let mData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data {
-        manufacturerData = (String(data: mData, encoding: .utf8) ?? "").components(separatedBy: ":")
+      if let mData = advertisementData[CBAdvertisementDataManufacturerDataKey] {
+        manufacturerData = [String(data: "\(mData)".data(using: .utf8) ?? Data(), encoding: .utf8) ?? ""]
       }
       let data: [String: Any] = [
         "name": peripheral.name ?? "N/A",

@@ -34,7 +34,6 @@ function App(): React.JSX.Element {
 
   const [trigger, { data }] = discoverNearbyDevicesAPI.useLazyScanQuery()
   const [isFetching, setIsFetching] = useState(false)
-  const [progressMessage, setProgressMessage] = useState<{title: string, message: string}>()
   const [keyword, setKeyword] = useState<string>("")
   const [modalVisible, setModalVisible] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState<BluetoothService.BLEDeviceData | undefined>(undefined)
@@ -59,11 +58,6 @@ function App(): React.JSX.Element {
   }, [data?.progressMessage])
 
   useEffect(() => {
-    // if (isFetching && data?.isScanning == false) {
-    //   setTimeout(() => {
-    //     dispatch(discoverNearbyDevicesAPI.util.resetApiState()) 
-    //   }, 250)
-    // }
     setIsFetching(data?.isScanning ?? isFetching)
   }, [data?.isScanning])
 
@@ -71,7 +65,11 @@ function App(): React.JSX.Element {
     if (keyword.length == 0) { return nearbyDevices }
 
     return nearbyDevices.filter((val: BluetoothService.BLEDeviceData) => {
-      return val.address.toLowerCase().includes(keyword.toLowerCase()) || (val.name).toLowerCase().includes(keyword.toLowerCase())
+      if (Platform.OS == 'android') {
+        return val.address.toLowerCase().includes(keyword.toLowerCase()) || (val.name).toLowerCase().includes(keyword.toLowerCase())
+      }
+
+      return val.uuid.toLowerCase().includes(keyword.toLowerCase()) || (val.name).toLowerCase().includes(keyword.toLowerCase())
     })
   }, [keyword, nearbyDevices])
 
@@ -119,7 +117,7 @@ function App(): React.JSX.Element {
                 <Text style={styles.cellTextRSSI}>{`${d.rssi}\ndBm`}</Text>
                 <View>
                   <Text style={styles.cellTextName}>{d.name}</Text>
-                  <Text style={styles.cellTextAddress}>{d.address}</Text>
+                  <Text style={styles.cellTextAddress}>{Platform.OS == 'android' ? d.address : d.uuid}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -177,12 +175,23 @@ function App(): React.JSX.Element {
                 <View style={styles.modalCellColumn}>
                   <Text style={styles.cellLabel}>MANUFACTURER SPECIFIC DATA</Text>
                   { 
-                    selectedDevice 
+                    Platform.OS == 'android' 
+                    && selectedDevice 
                     && (selectedDevice?.manufacturerSpecificData ?? []).length > 0 
                     && selectedDevice.manufacturerSpecificData?.map((data: string) => (
                       <View style={styles.modalCell} key={data}>
                         <Text style={styles.cellLabel}>{data.split('=').at(0)}</Text>
                         <Text style={styles.cellLabelValue}>{data.split('=').at(1)}</Text>
+                      </View>
+                    ))
+                  }
+                  { 
+                    Platform.OS == 'ios' 
+                    && selectedDevice 
+                    && (selectedDevice?.manufacturerSpecificData ?? []).length > 0 
+                    && selectedDevice.manufacturerSpecificData?.map((data: string) => (
+                      <View style={styles.modalCell} key={data}>
+                        <Text style={styles.cellLabelValue}>{data}</Text>
                       </View>
                     ))
                   }
