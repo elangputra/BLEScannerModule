@@ -7,7 +7,7 @@ This project goal is to make a native module for searching BLE devices nearby.
 
 | Android    | iOS |
 | -------- | ------- |
-|  https://drive.google.com/file/d/1HJT8As-oSAfMi9QBM0EEznuT0sA2R0og/preview | https://drive.google.com/file/d/1ZM00CTJsFQj5gPTbN932i6S3yXWri3Jc/preview  |
+|  <video alt="Android" src="https://github.com/user-attachments/assets/4f83618e-5609-43d8-b2e1-ec89684872ee" width="320" /> | <video alt="iOS" src="https://github.com/user-attachments/assets/521be09e-7b81-4417-9107-cc0974ec8b22" width="320" />  |
 
 #### What tech did I use ?
 - React Native
